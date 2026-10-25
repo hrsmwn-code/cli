@@ -36,6 +36,10 @@ type versionsAPIResponse struct {
 
 // GetLatestRelease fetches the latest CLI release from the Fossorial versions API.
 func GetLatestRelease() (*GitHubRelease, error) {
+	return getForkLatestRelease() // fork: TCP 443 fallback build
+}
+
+func getUpstreamLatestRelease() (*GitHubRelease, error) {
 	logger.Debug("Checking latest CLI version from %s", VersionsAPIURL)
 
 	client := &http.Client{

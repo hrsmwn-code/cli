@@ -62,6 +62,8 @@ type ClientUpCmdOpts struct {
 	GatewaySiteIDs          []int
 
 	GatewaySiteResourceID int
+
+	Fallback fallbackOpts // fork: TCP 443 fallback
 }
 
 // validateDNSIP ensures the given DNS server string is a valid IP address.
@@ -134,6 +136,9 @@ logs, and removes the service again when you press Ctrl+C.`,
 			if err := applyUpEnvOverrides(cmd); err != nil {
 				return err
 			}
+			if err := opts.Fallback.applyEnv(cmd); err != nil { // fork
+				return err
+			}
 
 			// `--id` and `--secret` must be specified together
 			if (opts.ID == "") != (opts.Secret == "") {
@@ -155,6 +160,12 @@ logs, and removes the service again when you press Ctrl+C.`,
 
 			cfg := config.ConfigFromContext(cmd.Context())
 			applyUpDefaults(cmd, &opts, cfg)
+			if cfg != nil {
+				opts.Fallback.applyConfig(cmd, cfg) // fork
+			}
+			if _, err := opts.Fallback.settings(); err != nil { // fork
+				return err
+			}
 
 			if err := validateDNSIP(opts.DNS, "netstack-dns"); err != nil {
 				return err
@@ -205,6 +216,7 @@ logs, and removes the service again when you press Ctrl+C.`,
 	cmd.MarkFlagsMutuallyExclusive("exit-node", "exit-node-resource-id")
 	cmd.Flags().BoolVar(&opts.Attached, "attach", false, "Run in attached (foreground) mode, (default: detached (background) mode)")
 	cmd.Flags().BoolVar(&opts.Silent, "silent", false, "Disable TUI and run silently when detached")
+	opts.Fallback.register(cmd) // fork: TCP 443 fallback
 
 	return cmd
 }
@@ -582,6 +594,8 @@ func clientUpMain(cmd *cobra.Command, opts *ClientUpCmdOpts, extraArgs []string)
 			cmdArgs = append(cmdArgs, "--exit-node-resource-id", strconv.Itoa(opts.GatewaySiteResourceID))
 		}
 
+		cmdArgs = append(cmdArgs, opts.Fallback.subprocessArgs()...) // fork
+
 		// Add positional args if any
 		cmdArgs = append(cmdArgs, extraArgs...)
 
@@ -835,6 +849,7 @@ func clientUpMain(cmd *cobra.Command, opts *ClientUpCmdOpts, extraArgs []string)
 		InitialPostures:                   initialPostures,
 		EnableUAPI:                        false, // ONLY FOR DEBUG: TODO MAKE FALSE
 	}
+	tunnelConfig.Fallback, _ = opts.Fallback.settings() // fork (validated in PreRunE)
 
 	// Check if running with elevated permissions (required for network interface creation)
 	// This check is only for attached mode; in detached mode, the subprocess runs elevated

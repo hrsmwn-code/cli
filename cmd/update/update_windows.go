@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/fosrl/cli/internal/logger"
+	versionpkg "github.com/fosrl/cli/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +23,7 @@ const windowsInstallerAssetName = "pangolin-cli_windows_installer.msi"
 const githubAPIBaseURL = "https://api.github.com"
 const versionsAPIURL = "https://api.fossorial.io/api/v1/versions"
 
-var windowsUpdateRepo = "fosrl/cli"
+var windowsUpdateRepo = versionpkg.ForkRepo // fork
 
 type githubReleaseAsset struct {
 	Name string `json:"name"`

@@ -1,0 +1,97 @@
+# Fork-only: rebase `fallback` onto upstream CLI releases and publish CLI
+# binaries built against the newt + olm forks (macOS + Linux).
+name: fork-fallback
+
+on:
+  schedule:
+    - cron: "57 3 * * *"
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: "Upstream tag to rebase onto (default: latest release)"
+        required: false
+      release:
+        description: "Publish a release even if nothing changed"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  OWNER: ${{ github.repository_owner }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fallback
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with: { repository: "${{ env.OWNER }}/newt", ref: fallback, path: _newt, fetch-depth: 0 }
+      - uses: actions/checkout@v4
+        with: { repository: "${{ env.OWNER }}/olm", ref: fallback, path: _olm }
+      - name: Rebase onto upstream release
+        id: rebase
+        run: |
+          git config user.name "fork-bot"
+          git config user.email "fork-bot@users.noreply.github.com"
+          git remote add upstream https://github.com/fosrl/cli.git
+          git fetch --tags upstream
+          tag="${{ inputs.upstream_tag }}"
+          [ -n "$tag" ] || tag=$(git tag -l '[0-9]*.[0-9]*.[0-9]*' | grep -v -- '-' | sort -V | tail -1)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          base=$(git merge-base HEAD "$tag")
+          changed=true
+          if [ "$base" = "$(git rev-list -n1 "$tag")" ]; then changed=false; else git rebase --onto "$tag" "$base" fallback; fi
+          # also rebuild when the newt/olm forks moved
+          deps="$(git -C _newt rev-parse HEAD)-$(git -C _olm rev-parse HEAD)"
+          last=$(git tag -l "${tag}-fallback.*" --sort=-v:refname | head -1)
+          if [ -n "$last" ] && [ "$(git tag -l --format='%(contents:subject)' "$last")" = "deps $deps" ] && [ "$changed" = false ] && [ "${{ inputs.release }}" != true ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          n=$(( $(git tag -l "${tag}-fallback.*" | wc -l) + 1 ))
+          echo "version=${tag}-fallback.${n}" >> "$GITHUB_OUTPUT"
+          echo "deps=$deps" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "build=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@v5
+        if: steps.rebase.outputs.build == 'true'
+        with:
+          go-version-file: go.mod
+      - name: Build and test
+        if: steps.rebase.outputs.build == 'true'
+        env:
+          V: ${{ steps.rebase.outputs.version }}
+        run: |
+          go work init . ./_newt ./_olm
+          go test ./cmd/up/client/ ./internal/version/
+          LDF="-s -w -X github.com/fosrl/cli/internal/version.Version=${V} -X github.com/fosrl/cli/internal/version.ForkRepo=${GITHUB_REPOSITORY}"
+          mkdir -p bin
+          for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
+            CGO_ENABLED=0 GOOS=${t%/*} GOARCH=${t#*/} go build -ldflags "$LDF" -o "bin/pangolin-cli_${t%/*}_${t#*/}" .
+          done
+          (cd bin && sha256sum * > SHA256SUMS)
+      - name: Push branch and release
+        if: steps.rebase.outputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ steps.rebase.outputs.version }}
+        run: |
+          [ "${{ steps.rebase.outputs.changed }}" = true ] && git push --force-with-lease origin fallback
+          git tag -a "$V" -m "deps ${{ steps.rebase.outputs.deps }}"
+          git push origin "$V"
+          gh release create "$V" bin/* --title "$V" --notes "Pangolin CLI ${{ steps.rebase.outputs.tag }} with TCP 443 fallback. Install: curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/fallback/get-cli.sh | sh"
+      - name: Open issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: `cli fallback build failed`,
+              body: `See ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })

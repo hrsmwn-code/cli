@@ -14,7 +14,7 @@ import (
 
 // ForkRepo is the GitHub repo ("owner/name") releases come from. Override
 // at build time: -ldflags "-X github.com/fosrl/cli/internal/version.ForkRepo=owner/cli"
-var ForkRepo = "harismawan/pangolin-cli"
+var ForkRepo = "hrsmwn-code/cli"
 
 // ForkBranch holds the fork's install script.
 var ForkBranch = "fallback"

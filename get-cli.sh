@@ -11,9 +11,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# GitHub repository info
-REPO="fosrl/cli"
-VERSIONS_API_URL="https://api.fossorial.io/api/v1/versions"
+# GitHub repository info (fork: TCP 443 fallback build)
+REPO="${PANGOLIN_CLI_REPO:-harismawan/pangolin-cli}"
+VERSIONS_API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
 # Output helpers
 print_status() {
@@ -45,10 +45,10 @@ get_latest_version() {
         exit 1
     fi
 
-    # Extract data.cli.latestVersion from the API response without requiring jq.
-    version=$(printf '%s' "$latest_info" | tr -d '\n\r' | sed -n 's/.*"cli"[[:space:]]*:[[:space:]]*{[^}]*"latestVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    # fork: extract tag_name from the GitHub releases API without requiring jq.
+    version=$(printf '%s' "$latest_info" | tr -d '\n\r' | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
     if [ -z "$version" ]; then
-        print_error "Could not parse cli.latestVersion from versions API response"
+        print_error "Could not parse tag_name from GitHub releases API response"
         exit 1
     fi
 

@@ -17,7 +17,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # GitHub repository info (fork: TCP 443 fallback build)
-REPO="${PANGOLIN_CLI_REPO:-harismawan/pangolin-cli}"
+REPO="${PANGOLIN_CLI_REPO:-hrsmwn-code/cli}"
 RELEASE_API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
 # Output helpers

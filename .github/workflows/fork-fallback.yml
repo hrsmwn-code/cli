@@ -84,7 +84,7 @@ jobs:
           [ "${{ steps.rebase.outputs.changed }}" = true ] && git push --force-with-lease origin fallback
           git tag -a "$V" -m "deps ${{ steps.rebase.outputs.deps }}"
           git push origin "$V"
-          gh release create "$V" bin/* --title "$V" --notes "Pangolin CLI ${{ steps.rebase.outputs.tag }} with TCP 443 fallback. Install: curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/fallback/get-cli.sh | sh"
+          gh release create "$V" bin/* -R "$GITHUB_REPOSITORY" --verify-tag --title "$V" --notes "Pangolin CLI ${{ steps.rebase.outputs.tag }} with TCP 443 fallback. Install: curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/fallback/get-cli.sh | sh"
       - name: Open issue on failure
         if: failure()
         uses: actions/github-script@v7

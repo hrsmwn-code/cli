@@ -96,6 +96,12 @@ detect_platform() {
         *) print_error "Unsupported architecture: $(uname -m)"; exit 1 ;;
     esac
 
+    # fork: only these builds are published
+    case "${os}_${arch}" in
+        darwin_arm64|darwin_amd64|linux_amd64|linux_arm64) ;;
+        *) print_error "No fallback build for ${os}_${arch} (available: darwin_arm64, darwin_amd64, linux_amd64, linux_arm64)"; exit 1 ;;
+    esac
+
     printf '%s_%s' "$os" "$arch"
 }
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Get Pangolin - Cross-platform installation script
-# Usage: curl -fsSL https://raw.githubusercontent.com/fosrl/cli/refs/heads/main/get-cli.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/hrsmwn-code/cli/fallback/get-cli.sh | sh
 #
 # Options (pass after `sh -s --`, e.g. `... | sh -s -- --version 0.21.0`):
 #   --version <version>  Install a specific release instead of the latest.
@@ -16,9 +16,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# GitHub repository info
-REPO="fosrl/cli"
-RELEASE_API_URL="https://api.fossorial.io/api/v1/versions/cli"
+# GitHub repository info (fork: TCP 443 fallback build)
+REPO="${PANGOLIN_CLI_REPO:-harismawan/pangolin-cli}"
+RELEASE_API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
 # Output helpers
 print_status() {
@@ -46,8 +46,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 1' INT TERM
 
-# Fetch the latest release info (version and asset checksums) from the
-# Fossorial API into RELEASE_INFO. Returns 1 if it isn't available.
+# Fetch the latest fork release info from GitHub. Returns 1 if unavailable.
 RELEASE_INFO=""
 fetch_release_info() {
     if command -v curl >/dev/null 2>&1; then
@@ -59,18 +58,22 @@ fetch_release_info() {
     [ -n "$RELEASE_INFO" ]
 }
 
-# latestVersion from RELEASE_INFO, without a leading "v". Parsed without jq.
+# Extract the fork release tag without requiring jq.
 release_info_version() {
     printf '%s' "$RELEASE_INFO" |
-        sed -n 's/.*"latestVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
-        sed 's/^v//'
+        sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
 }
 
-# Published sha256 of a release asset from RELEASE_INFO, or nothing.
+# Published sha256 of this fork release asset from its SHA256SUMS, or nothing.
 release_info_digest() {
-    asset_re=$(printf '%s' "$1" | sed 's/[][\.*^$/]/\\&/g')
-    printf '%s' "$RELEASE_INFO" |
-        sed -n "s/.*\"${asset_re}\"[[:space:]]*:[[:space:]]*\"\([0-9a-f]\{64\}\)\".*/\1/p"
+    if command -v curl >/dev/null 2>&1; then
+        checksums=$(curl -fsSL "$BASE_URL/SHA256SUMS" 2>/dev/null) || return 0
+    else
+        checksums=$(wget -qO- "$BASE_URL/SHA256SUMS" 2>/dev/null) || return 0
+    fi
+    printf '%s\n' "$checksums" | awk -v asset="$1" '
+        $2 == asset && length($1) == 64 && $1 ~ /^[0-9a-f]+$/ { print $1; exit }
+    '
 }
 
 # sha256 of a file, with whichever tool this system has.

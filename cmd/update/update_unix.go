@@ -7,6 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/fosrl/cli/internal/logger"
+	versionpkg "github.com/fosrl/cli/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +39,7 @@ func updateMain() error {
 	logger.Debug("Current executable path: %s", execPath)
 
 	// Execute: curl -fsSL https://static.pangolin.net/get-cli.sh | bash -s -- --path /current/binary/path
-	updateCmd := exec.Command("sh", "-c", "curl -fsSL https://static.pangolin.net/get-cli.sh | bash -s -- --path "+execPath)
+	updateCmd := exec.Command("sh", "-c", "curl -fsSL "+versionpkg.InstallScriptURL()+" | bash -s -- --path "+execPath) // fork
 	updateCmd.Stdin = os.Stdin
 	updateCmd.Stdout = os.Stdout
 	updateCmd.Stderr = os.Stderr

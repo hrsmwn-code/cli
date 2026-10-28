@@ -68,8 +68,11 @@ jobs:
           V: ${{ steps.rebase.outputs.version }}
         run: |
           go work init . ./_newt ./_olm
+          python3 .github/scripts/test_release_versions.py
           go test ./cmd/up/client/ ./internal/version/
-          LDF="-s -w -X github.com/fosrl/cli/internal/version.Version=${V} -X github.com/fosrl/cli/internal/version.ForkRepo=${GITHUB_REPOSITORY}"
+          NEWT_VERSION=$(GOWORK=off go list -m -f '{{.Version}}' github.com/fosrl/newt | sed 's/^v//')
+          OLM_VERSION=$(GOWORK=off go list -m -f '{{.Version}}' github.com/fosrl/olm | sed 's/^v//')
+          LDF="-s -w -X github.com/fosrl/cli/internal/version.Version=${V} -X github.com/fosrl/cli/internal/version.ForkRepo=${GITHUB_REPOSITORY} -X github.com/fosrl/cli/internal/version.NewtVersionOverride=${NEWT_VERSION} -X github.com/fosrl/cli/internal/version.OlmVersionOverride=${OLM_VERSION}"
           mkdir -p bin
           for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
             CGO_ENABLED=0 GOOS=${t%/*} GOARCH=${t#*/} go build -ldflags "$LDF" -o "bin/pangolin-cli_${t%/*}_${t#*/}" .

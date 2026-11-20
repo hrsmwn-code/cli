@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "newtFork": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795156280,
+        "narHash": "sha256-SsAVWzWWBxzLqJyjyRxktJb/5mBn8vvR6SMug9vYba4=",
+        "owner": "hrsmwn-code",
+        "repo": "newt",
+        "rev": "38e8716b7f12e9e37b6c534d731d35294c2ce33c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hrsmwn-code",
+        "repo": "newt",
+        "rev": "38e8716b7f12e9e37b6c534d731d35294c2ce33c",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1789370336,
@@ -16,9 +33,28 @@
         "type": "github"
       }
     },
+    "olmFork": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795156293,
+        "narHash": "sha256-RAd5UbZ8oz5mKbvPsbaxu6OGt6RxNbbYSMjgmwsU7JM=",
+        "owner": "hrsmwn-code",
+        "repo": "olm",
+        "rev": "b81c371c00dbbb67cf0c4fe47b55ab65ade0c076",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hrsmwn-code",
+        "repo": "olm",
+        "rev": "b81c371c00dbbb67cf0c4fe47b55ab65ade0c076",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "newtFork": "newtFork",
+        "nixpkgs": "nixpkgs",
+        "olmFork": "olmFork"
       }
     }
   },

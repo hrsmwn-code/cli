@@ -6,6 +6,9 @@ on:
     paths:
       - go.mod
       - go.sum
+      - flake.nix
+      - flake.lock
+      - .github/workflows/nix-build.yml
 
 jobs:
   nix-build:
@@ -23,3 +26,4 @@ jobs:
           NIXPKGS_ALLOW_UNFREE: "1"
         run: |
           nix build .#pangolin-cli -L --impure
+          ./result/bin/pangolin-cli up --help | grep -F -- '--fallback-relay-path'

@@ -2,6 +2,7 @@ package client
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/fosrl/newt/fallback"
@@ -47,6 +48,18 @@ func TestFallbackFlagsForwardedToSubprocess(t *testing.T) {
 	want := []string{"--transport", "tcp", "--fallback-relay-path", "/x", "--fallback-echo-port", "9"}
 	if got := f.subprocessArgs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("subprocess args %v, want %v", got, want)
+	}
+}
+
+func TestForwardedUpArgsIncludesResolvedFallbackConfig(t *testing.T) {
+	cmd := &cobra.Command{}
+	opts := &ClientUpCmdOpts{}
+	opts.Fallback.register(cmd)
+	opts.Fallback.applyConfig(cmd, mapConfig{"up.transport": "tcp", "up.fallback_relay_path": "/cfg"})
+	got := forwardedUpArgs(cmd, opts, "org", "https://example.test")
+	want := []string{"--transport", "tcp", "--fallback-relay-path", "/cfg"}
+	if len(got) < len(want) || !slices.Equal(got[len(got)-len(want):], want) {
+		t.Fatalf("forwarded args %v, want fallback arguments %v", got, want)
 	}
 }
 

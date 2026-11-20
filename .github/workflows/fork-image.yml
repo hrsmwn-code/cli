@@ -48,6 +48,7 @@ jobs:
           RUN ln -s pangolin-cli /usr/local/bin/pangolin
           COPY entrypoint.sh /
           RUN chmod +x /entrypoint.sh
+          ENV NEWT_SYSTEM_SUBSTRATE="CONTAINER"
           ENTRYPOINT ["/entrypoint.sh"]
           CMD ["pangolin-cli"]
           EOF

@@ -2,7 +2,10 @@
 
 package companion
 
-// macOS companion mode is not implemented yet. Return nil so the CLI uses standalone auth.
+import "github.com/fosrl/cli/internal/config"
+
 func platformProvider() Provider {
-	return nil
+	// Use the original user's home when the CLI runs under sudo.
+	home, _ := config.UserHomeDir()
+	return macOSDesktopProvider(home, "/Applications", newSocketSecretsClient)
 }

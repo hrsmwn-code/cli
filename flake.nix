@@ -33,6 +33,7 @@
           pname = "pangolin-cli";
           version = "0.23.0-fallback";
           src = ./.;
+          subPackages = [ "." ];
 
           vendorHash = "sha256-Llgk+nQNCEC1dhr02y+Hf3az8tmfxdhZX7c3SDzZ9N4=";
 
@@ -52,6 +53,10 @@
             "-X github.com/fosrl/cli/internal/version.NewtVersionOverride=1.20.1"
             "-X github.com/fosrl/cli/internal/version.OlmVersionOverride=1.10.2"
           ];
+
+          postInstall = ''
+            mv "$out/bin/cli" "$out/bin/pangolin-cli"
+          '';
 
           meta = with pkgs.lib; {
             description = "A VPN client for pangolin";

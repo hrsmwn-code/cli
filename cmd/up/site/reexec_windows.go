@@ -38,16 +38,6 @@ func reexec() error {
 	return nil // unreachable
 }
 
-// updateRestart returns the restart hook used after a self-update. Under the
-// service host the updated binary is picked up when the host relaunches us
-// (see reexec); otherwise nil lets the updates package start it itself.
-func updateRestart() func() error {
-	if supervisedByServiceHost() {
-		return reexec
-	}
-	return nil
-}
-
 func supervisedByServiceHost() bool {
 	return os.Getenv(svcmgr.SupervisedEnvVar) != ""
 }

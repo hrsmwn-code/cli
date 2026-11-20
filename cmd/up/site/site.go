@@ -7,15 +7,12 @@ package site
 
 import (
 	"context"
-	"crypto/tls"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"syscall"
-	"time"
 
 	"github.com/fosrl/cli/internal/config"
 	versionpkg "github.com/fosrl/cli/internal/version"
@@ -23,8 +20,6 @@ import (
 	newtLogger "github.com/fosrl/newt/logger"
 	newtpkg "github.com/fosrl/newt/newt"
 	"github.com/fosrl/newt/newtconfig"
-	"github.com/fosrl/newt/updates"
-	"github.com/fosrl/newt/websocket"
 	"github.com/spf13/cobra"
 )
 
@@ -89,16 +84,14 @@ func run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to initialize newt: %w", err)
 	}
 
-	resolvedCfg := n.GetConfig()
-
 	// Prometheus/OTLP exporters and the admin server (/metrics, /healthz,
 	// pprof) - honors --metrics, --metrics-admin-addr, --otlp, --pprof,
 	// --region and their NEWT_*/SITE_* env equivalents, same as newt.
 	stopTelemetry := n.StartTelemetry(sigCtx)
 	defer stopTelemetry()
 
-	startSelfUpdateChecks(sigCtx, resolvedCfg)
-
+	// The Pangolin server offers official builds, which would remove the fork's
+	// fallback support. Update explicitly with `pangolin update` instead.
 	n.Start(sigCtx)
 
 	return nil
@@ -117,60 +110,4 @@ func defaultSiteConfigFile() (string, error) {
 		return "", err
 	}
 	return filepath.Join(dir, "site.json"), nil
-}
-
-// startSelfUpdateChecks periodically checks the Pangolin server for a newer
-// CLI release and, if one is available, downloads it, replaces the running
-// `pangolin` binary on disk, and re-execs in place - mirroring the
-// self-update loop the standalone newt binary runs for itself, but with
-// Agent: "cli" so the server hands back a pangolin-cli release instead of a
-// newt one.
-func startSelfUpdateChecks(ctx context.Context, resolvedCfg newtpkg.Config) {
-	// Reuse the same TLS parameters as the websocket client for the
-	// self-update HTTP requests.
-	var selfUpdateTLS *tls.Config
-	if resolvedCfg.TLSClientCert != "" || resolvedCfg.TLSPrivateKey != "" {
-		selfUpdateTLS, _ = websocket.BuildTLSConfig(
-			resolvedCfg.TLSClientCert,
-			resolvedCfg.TLSClientKey,
-			resolvedCfg.TLSClientCAs,
-			resolvedCfg.TLSPrivateKey,
-		)
-	}
-
-	doUpdate := func() {
-		newtLogger.Debug("checkAndSelfUpdate: running periodic update check")
-		// The server compares the CLI against CLI releases, so report the
-		// CLI's own version (not the embedded newt version) as current.
-		if err := updates.CheckAndSelfUpdate(updates.SelfUpdateConfig{
-			Endpoint:       resolvedCfg.Endpoint,
-			NewtID:         resolvedCfg.ID,
-			Secret:         resolvedCfg.Secret,
-			CurrentVersion: versionpkg.Version,
-			TLSConfig:      selfUpdateTLS,
-			Agent:          "cli",
-			Restart:        updateRestart(),
-		}); err != nil {
-			if errors.Is(err, updates.ErrAutoUpdateUnsupportedInOfficialContainer) {
-				newtLogger.Debug("checkAndSelfUpdate: auto-update skipped: %v", err)
-				return
-			}
-			newtLogger.Error("Auto-update check failed: %v", err)
-		}
-	}
-
-	go func() {
-		time.Sleep(2 * time.Minute)
-		doUpdate()
-		ticker := time.NewTicker(6 * time.Hour)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				doUpdate()
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
 }

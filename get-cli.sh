@@ -217,17 +217,9 @@ parse_args() {
     done
 }
 
-# Set VERSION and BASE_URL for the release to install: the requested version,
-# else the latest from the Fossorial API, else GitHub's latest release (which
-# is a plain redirect, not a rate-limited GitHub API call). RELEASE_INFO is
-# cleared unless it describes the chosen version, so its checksums are only
-# ever used for the release they belong to.
+# Set VERSION and BASE_URL for the requested release or the latest fork
+# release. Fall back to the GitHub download redirect if its API is unavailable.
 resolve_release() {
-    latest=""
-    if fetch_release_info; then
-        latest=$(release_info_version)
-    fi
-
     if [ -n "$REQUESTED_VERSION" ]; then
         VERSION=$(printf '%s' "$REQUESTED_VERSION" | sed 's/^v//')
         case "$VERSION" in
@@ -238,19 +230,19 @@ resolve_release() {
         esac
         print_status "Requested version: v${VERSION}"
         BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
-        if [ "$VERSION" != "$latest" ]; then
-            RELEASE_INFO=""
-        fi
         return
     fi
 
+    latest=""
+    if fetch_release_info; then
+        latest=$(release_info_version)
+    fi
     if [ -n "$latest" ]; then
         VERSION="$latest"
         print_status "Latest version: v${VERSION}"
         BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
     else
         VERSION=""
-        RELEASE_INFO=""
         print_warning "Could not get the latest version from ${RELEASE_API_URL}"
         print_warning "Falling back to the latest release on GitHub"
         BASE_URL="https://github.com/${REPO}/releases/latest/download"

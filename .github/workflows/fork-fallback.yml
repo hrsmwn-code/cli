@@ -69,6 +69,7 @@ jobs:
         run: |
           go work init . ./_newt ./_olm
           python3 .github/scripts/test_release_versions.py
+          python3 .github/scripts/test_fork_installer.py
           go test ./cmd/up/client/ ./internal/version/
           NEWT_VERSION=$(GOWORK=off go list -m -f '{{.Version}}' github.com/fosrl/newt | sed 's/^v//')
           OLM_VERSION=$(GOWORK=off go list -m -f '{{.Version}}' github.com/fosrl/olm | sed 's/^v//')

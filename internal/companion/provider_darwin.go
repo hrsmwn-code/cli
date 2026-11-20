@@ -2,22 +2,10 @@
 
 package companion
 
-import (
-	"path/filepath"
-
-	"github.com/fosrl/cli/internal/config"
-)
-
-const darwinAppName = "Pangolin"
+import "github.com/fosrl/cli/internal/config"
 
 func platformProvider() Provider {
-	// The original user's home, so the CLI under sudo still finds their app.
-	dataDir := ""
-	if home, err := config.UserHomeDir(); err == nil {
-		dataDir = filepath.Join(home, "Library", "Application Support", darwinAppName)
-	}
-	return desktopProvider{
-		defaultDataDir: dataDir,
-		secrets:        newSocketSecretsClient,
-	}
+	// Use the original user's home when the CLI runs under sudo.
+	home, _ := config.UserHomeDir()
+	return macOSDesktopProvider(home, "/Applications", newSocketSecretsClient)
 }
